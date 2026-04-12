@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  --surface: #f5f4ee;
+  --surface-deep: #ebe9df;
+  --panel-soft: #eef4f0;
+  --accent-soft: #d7ebe3;
+  --accent: #2e6f62;
+  --accent-deep: #234f48;
+  --accent-ink: #153b35;
+  --ink-strong: #203135;
+  --ink-muted: #4a5d61;
+  --ink-soft: #6c7a7d;
+  --border-soft: #d7ddd8;
+  --focus-ring: rgba(46, 111, 98, 0.22);
+}
+
+html[data-theme="soft-dark"] {
+  --surface: #122027;
+  --surface-deep: #1c2d34;
+  --panel-soft: #1f3138;
+  --accent-soft: #233e39;
+  --accent: #7cc6b4;
+  --accent-deep: #65b09e;
+  --accent-ink: #dff6ef;
+  --ink-strong: #f6f8f5;
+  --ink-muted: #d3dbd8;
+  --ink-soft: #a6b8b5;
+  --border-soft: #32464c;
+  --focus-ring: rgba(124, 198, 180, 0.26);
+}
+
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body), sans-serif;
+}
+
+html[data-reading="large"] {
+  font-size: 18px;
+}
+
+::selection {
+  background: rgba(46, 111, 98, 0.16);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
