@@ -37,7 +37,7 @@ export function SiteHeader() {
             <button
               type="button"
               onClick={() => setLargeText(!largeText)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white px-4 py-2 text-base font-medium text-[color:var(--ink-strong)] shadow-sm transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--card)] px-4 py-2 text-base font-medium text-[color:var(--ink-strong)] shadow-sm transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]"
               aria-pressed={largeText}
             >
               <Type className="h-5 w-5" />
@@ -46,7 +46,7 @@ export function SiteHeader() {
             <button
               type="button"
               onClick={() => setTheme(theme === "light" ? "soft-dark" : "light")}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white px-4 py-2 text-base font-medium text-[color:var(--ink-strong)] shadow-sm transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--card)] px-4 py-2 text-base font-medium text-[color:var(--ink-strong)] shadow-sm transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)]"
               aria-pressed={theme === "soft-dark"}
             >
               {theme === "soft-dark" ? <SunMedium className="h-5 w-5" /> : <MoonStar className="h-5 w-5" />}
@@ -63,10 +63,11 @@ export function SiteHeader() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={`inline-flex min-h-11 items-center rounded-full px-4 py-2 text-base font-medium transition focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] ${
                   active
                     ? "bg-[color:var(--accent)] text-white"
-                    : "border border-[color:var(--border-soft)] bg-white text-[color:var(--ink-strong)] hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)]"
+                    : "border border-[color:var(--border-soft)] bg-[color:var(--card)] text-[color:var(--ink-strong)] hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)]"
                 }`}
               >
                 {item.label}

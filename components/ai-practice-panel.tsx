@@ -2,25 +2,9 @@
 
 import { useState } from "react";
 import { Bot, Sparkles } from "lucide-react";
+import type { LessonResponse, PromptCoachResponse } from "@/lib/ai-contracts";
 import { aiPromptExamples, aiSafetyReminders } from "@/lib/data";
 import { ListenButton } from "@/components/listen-button";
-
-type PromptCoachResponse = {
-  improved_prompt: string;
-  why_it_helps: string[];
-  privacy_warning: string;
-  source?: "nim" | "fallback";
-  notice?: string;
-};
-
-type LessonResponse = {
-  title: string;
-  intro: string;
-  steps: string[];
-  safety_tip: string;
-  source?: "nim" | "fallback";
-  notice?: string;
-};
 
 const starterTopics = ["reading a strange email", "using QR codes safely", "joining a video call", "checking a website link"];
 
@@ -34,10 +18,20 @@ export function AIPracticePanel() {
   const [lessonResult, setLessonResult] = useState<LessonResponse | null>(null);
   const [lessonError, setLessonError] = useState<string | null>(null);
   const [lessonLoading, setLessonLoading] = useState(false);
+  const [privacyConfirmed, setPrivacyConfirmed] = useState(false);
+
+  const privacyReminder =
+    "I will not send passwords, one-time codes, full account numbers, or private medical details to the AI helper.";
 
   async function handlePromptCoach() {
     if (!prompt.trim()) {
       setPromptError("Please enter a prompt first.");
+      setPromptResult(null);
+      return;
+    }
+
+    if (!privacyConfirmed) {
+      setPromptError("Please confirm the privacy reminder before using the AI coach.");
       setPromptResult(null);
       return;
     }
@@ -75,6 +69,12 @@ export function AIPracticePanel() {
       return;
     }
 
+    if (!privacyConfirmed) {
+      setLessonError("Please confirm the privacy reminder before using the AI helper.");
+      setLessonResult(null);
+      return;
+    }
+
     setLessonLoading(true);
     setLessonError(null);
 
@@ -103,7 +103,7 @@ export function AIPracticePanel() {
 
   return (
     <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
-      <section className="rounded-[2rem] border border-[color:var(--border-soft)] bg-white p-6 shadow-[0_18px_40px_rgba(38,51,55,0.08)]">
+      <section className="rounded-[2rem] border border-[color:var(--border-soft)] bg-[color:var(--card)] p-6 shadow-[0_18px_40px_rgba(38,51,55,0.08)]">
         <div className="flex items-start gap-3">
           <Sparkles className="mt-1 h-6 w-6 text-[color:var(--accent)]" />
           <div>
@@ -135,13 +135,28 @@ export function AIPracticePanel() {
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           rows={7}
+          aria-describedby="ai-privacy-note"
           className="mt-3 w-full rounded-[1.5rem] border border-[color:var(--border-soft)] bg-[color:var(--panel-soft)] px-5 py-4 text-lg leading-8 text-[color:var(--ink-strong)] outline-none transition focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--focus-ring)]"
         />
+        <div className="mt-4 rounded-[1.5rem] border border-[color:var(--border-soft)] bg-[color:var(--panel-soft)] px-4 py-4">
+          <p id="ai-privacy-note" className="text-base leading-7 text-[color:var(--ink-muted)]">
+            SilverGuide redacts obvious personal details before sending text to AI, but private information is still not needed here.
+          </p>
+          <label className="mt-3 flex items-start gap-3 text-base leading-7 text-[color:var(--ink-strong)]">
+            <input
+              type="checkbox"
+              checked={privacyConfirmed}
+              onChange={(event) => setPrivacyConfirmed(event.target.checked)}
+              className="mt-1 h-5 w-5 rounded border-[color:var(--border-soft)] text-[color:var(--accent)] focus:ring-[color:var(--focus-ring)]"
+            />
+            <span>{privacyReminder}</span>
+          </label>
+        </div>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handlePromptCoach}
-            disabled={promptLoading}
+            disabled={promptLoading || !privacyConfirmed}
             className="inline-flex min-h-12 items-center justify-center rounded-full bg-[color:var(--accent)] px-5 py-3 text-lg font-semibold text-white transition hover:bg-[color:var(--accent-deep)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] disabled:cursor-wait disabled:opacity-70"
           >
             {promptLoading ? "Coaching..." : "Improve this prompt"}
@@ -150,18 +165,24 @@ export function AIPracticePanel() {
         </div>
 
         {promptError ? (
-          <p className="mt-4 rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-base text-rose-900">{promptError}</p>
+          <p
+            className="mt-4 rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-base text-rose-900"
+            role="alert"
+            aria-live="assertive"
+          >
+            {promptError}
+          </p>
         ) : null}
 
         {promptResult ? (
-          <div className="mt-6 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-[color:var(--panel-soft)] p-5">
+          <div className="mt-6 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-[color:var(--panel-soft)] p-5" aria-live="polite">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-soft)]">
+              <span className="rounded-full bg-[color:var(--card)] px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-soft)]">
                 Source: {promptResult.source === "nim" ? "NVIDIA NIM" : "Built-in backup"}
               </span>
             </div>
             <h3 className="mt-4 text-xl font-semibold text-[color:var(--ink-strong)]">Suggested prompt</h3>
-            <p className="mt-3 whitespace-pre-line rounded-[1.5rem] bg-white p-4 text-lg leading-8 text-[color:var(--ink-strong)]">
+            <p className="mt-3 whitespace-pre-line rounded-[1.5rem] bg-[color:var(--card)] p-4 text-lg leading-8 text-[color:var(--ink-strong)]">
               {promptResult.improved_prompt}
             </p>
             <h4 className="mt-5 text-lg font-semibold text-[color:var(--ink-strong)]">Why it helps</h4>
@@ -182,7 +203,7 @@ export function AIPracticePanel() {
       </section>
 
       <section className="space-y-8">
-        <div className="rounded-[2rem] border border-[color:var(--border-soft)] bg-white p-6 shadow-[0_18px_40px_rgba(38,51,55,0.08)]">
+        <div className="rounded-[2rem] border border-[color:var(--border-soft)] bg-[color:var(--card)] p-6 shadow-[0_18px_40px_rgba(38,51,55,0.08)]">
           <div className="flex items-start gap-3">
             <Bot className="mt-1 h-6 w-6 text-[color:var(--accent)]" />
             <div>
@@ -213,13 +234,14 @@ export function AIPracticePanel() {
             id="lesson-topic"
             value={topic}
             onChange={(event) => setTopic(event.target.value)}
+            aria-describedby="ai-privacy-note"
             className="mt-3 w-full rounded-[1.5rem] border border-[color:var(--border-soft)] bg-[color:var(--panel-soft)] px-5 py-4 text-lg text-[color:var(--ink-strong)] outline-none transition focus:border-[color:var(--accent)] focus:ring-4 focus:ring-[color:var(--focus-ring)]"
           />
           <div className="mt-4 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={handleLessonAgent}
-              disabled={lessonLoading}
+              disabled={lessonLoading || !privacyConfirmed}
               className="inline-flex min-h-12 items-center justify-center rounded-full bg-[color:var(--accent)] px-5 py-3 text-lg font-semibold text-white transition hover:bg-[color:var(--accent-deep)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] disabled:cursor-wait disabled:opacity-70"
             >
               {lessonLoading ? "Building lesson..." : "Teach this topic"}
@@ -228,19 +250,25 @@ export function AIPracticePanel() {
           </div>
 
           {lessonError ? (
-            <p className="mt-4 rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-base text-rose-900">{lessonError}</p>
+            <p
+              className="mt-4 rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-base text-rose-900"
+              role="alert"
+              aria-live="assertive"
+            >
+              {lessonError}
+            </p>
           ) : null}
 
           {lessonResult ? (
-            <div className="mt-6 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-[color:var(--panel-soft)] p-5">
-              <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-soft)]">
+            <div className="mt-6 rounded-[1.75rem] border border-[color:var(--border-soft)] bg-[color:var(--panel-soft)] p-5" aria-live="polite">
+              <span className="rounded-full bg-[color:var(--card)] px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-soft)]">
                 Source: {lessonResult.source === "nim" ? "NVIDIA NIM" : "Built-in backup"}
               </span>
               <h3 className="mt-4 font-display text-3xl text-[color:var(--ink-strong)]">{lessonResult.title}</h3>
               <p className="mt-3 text-lg leading-8 text-[color:var(--ink-muted)]">{lessonResult.intro}</p>
               <ol className="mt-5 space-y-4 text-lg leading-8 text-[color:var(--ink-strong)]">
                 {lessonResult.steps.map((step) => (
-                  <li key={step} className="rounded-[1.25rem] bg-white p-4">
+                  <li key={step} className="rounded-[1.25rem] bg-[color:var(--card)] p-4">
                     {step}
                   </li>
                 ))}
@@ -253,7 +281,7 @@ export function AIPracticePanel() {
           ) : null}
         </div>
 
-        <div className="rounded-[2rem] border border-[color:var(--border-soft)] bg-white p-6 shadow-[0_18px_40px_rgba(38,51,55,0.08)]">
+        <div className="rounded-[2rem] border border-[color:var(--border-soft)] bg-[color:var(--card)] p-6 shadow-[0_18px_40px_rgba(38,51,55,0.08)]">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-soft)]">Safe AI habits</p>
           <ul className="mt-4 space-y-4 text-lg leading-8 text-[color:var(--ink-muted)]">
             {aiSafetyReminders.map((reminder) => (

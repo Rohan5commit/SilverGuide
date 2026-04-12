@@ -2,18 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { BookOpen, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import type { AccessibilityResponse } from "@/lib/ai-contracts";
 import type { LessonStep, TechLesson } from "@/lib/data";
 import { ListenButton } from "@/components/listen-button";
 import { usePreferences } from "@/components/preferences-provider";
-
-type AccessibilityVersion = {
-  title: string;
-  summary: string;
-  simplified_steps: string[];
-  reading_tips: string[];
-  source?: "nim" | "fallback";
-  notice?: string;
-};
 
 function buildStepText(step: LessonStep) {
   return `${step.title}. ${step.body}. Tip: ${step.tip}`;
@@ -23,7 +15,7 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
   const { largeText } = usePreferences();
   const [selectedId, setSelectedId] = useState(lessons[0]?.id ?? "");
   const [stepIndex, setStepIndex] = useState(0);
-  const [simplified, setSimplified] = useState<AccessibilityVersion | null>(null);
+  const [simplified, setSimplified] = useState<AccessibilityResponse | null>(null);
   const [showSimplified, setShowSimplified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,9 +23,10 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedId) ?? lessons[0];
   const currentStep = selectedLesson.steps[stepIndex];
   const progressPercent = ((stepIndex + 1) / selectedLesson.steps.length) * 100;
-  const activeStepText = showSimplified && simplified
-    ? simplified.simplified_steps[stepIndex] || simplified.simplified_steps[simplified.simplified_steps.length - 1]
-    : buildStepText(currentStep);
+  const simplifiedSteps = selectedLesson.steps.map(
+    (step, index) => simplified?.simplified_steps[index] || `${step.title}: ${step.body}`
+  );
+  const activeStepText = showSimplified && simplified ? simplifiedSteps[stepIndex] : buildStepText(currentStep);
 
   useEffect(() => {
     setStepIndex(0);
@@ -59,7 +52,7 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
         }),
       });
 
-      const data = (await response.json()) as AccessibilityVersion & { error?: string };
+      const data = (await response.json()) as AccessibilityResponse & { error?: string };
 
       if (!response.ok) {
         throw new Error(data.error || "The accessibility helper could not simplify this lesson.");
@@ -89,7 +82,7 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
 
   return (
     <div className="grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
-      <section className="rounded-[2rem] border border-[color:var(--border-soft)] bg-white p-6 shadow-[0_18px_40px_rgba(38,51,55,0.08)]">
+      <section className="rounded-[2rem] border border-[color:var(--border-soft)] bg-[color:var(--card)] p-6 shadow-[0_18px_40px_rgba(38,51,55,0.08)]">
         <div className="flex items-start gap-3">
           <BookOpen className="mt-1 h-6 w-6 text-[color:var(--accent)]" />
           <div>
@@ -120,7 +113,7 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
                     <p className="text-xl font-semibold text-[color:var(--ink-strong)]">{lesson.title}</p>
                     <p className="mt-2 text-base leading-7 text-[color:var(--ink-muted)]">{lesson.blurb}</p>
                   </div>
-                  <span className="rounded-full bg-white px-3 py-2 text-sm font-semibold text-[color:var(--ink-soft)]">
+                  <span className="rounded-full bg-[color:var(--card)] px-3 py-2 text-sm font-semibold text-[color:var(--ink-soft)]">
                     {lesson.duration}
                   </span>
                 </div>
@@ -130,7 +123,7 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-[color:var(--border-soft)] bg-white p-6 shadow-[0_18px_40px_rgba(38,51,55,0.08)]">
+      <section className="rounded-[2rem] border border-[color:var(--border-soft)] bg-[color:var(--card)] p-6 shadow-[0_18px_40px_rgba(38,51,55,0.08)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-soft)]">
@@ -145,7 +138,7 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
               type="button"
               onClick={handleSimplify}
               disabled={loading}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white px-4 py-2 text-base font-medium text-[color:var(--ink-strong)] transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] disabled:cursor-wait disabled:opacity-70"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--card)] px-4 py-2 text-base font-medium text-[color:var(--ink-strong)] transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] disabled:cursor-wait disabled:opacity-70"
             >
               <Sparkles className="h-5 w-5" />
               {loading ? "Simplifying..." : largeText ? "Large text version" : "Simplify lesson"}
@@ -164,16 +157,20 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
 
         <div className="mt-6 rounded-full bg-[color:var(--panel-soft)] p-2">
           <div
+            role="progressbar"
+            aria-label="Lesson progress"
+            aria-valuemin={1}
+            aria-valuemax={selectedLesson.steps.length}
+            aria-valuenow={stepIndex + 1}
             className="h-3 rounded-full bg-[color:var(--accent)] transition-all"
             style={{ width: `${progressPercent}%` }}
-            aria-hidden
           />
         </div>
-        <p className="mt-3 text-base text-[color:var(--ink-soft)]">
+        <p className="mt-3 text-base text-[color:var(--ink-soft)]" aria-live="polite">
           Step {stepIndex + 1} of {selectedLesson.steps.length}
         </p>
 
-        <div className="mt-6 rounded-[1.75rem] bg-[color:var(--panel-soft)] p-6">
+        <div className="mt-6 rounded-[1.75rem] bg-[color:var(--panel-soft)] p-6" aria-live="polite">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-soft)]">
             {showSimplified ? "Simpler reading version" : "Current step"}
           </p>
@@ -181,9 +178,9 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
             {showSimplified && simplified ? `Step ${stepIndex + 1}` : currentStep.title}
           </h3>
           <p className="mt-4 text-xl leading-9 text-[color:var(--ink-strong)]">
-            {showSimplified && simplified ? simplified.simplified_steps[stepIndex] : currentStep.body}
+            {showSimplified && simplified ? simplifiedSteps[stepIndex] : currentStep.body}
           </p>
-          <p className="mt-5 rounded-[1.5rem] bg-white p-4 text-lg leading-8 text-[color:var(--ink-muted)]">
+          <p className="mt-5 rounded-[1.5rem] bg-[color:var(--card)] p-4 text-lg leading-8 text-[color:var(--ink-muted)]">
             Tip: {showSimplified && simplified ? simplified.reading_tips[stepIndex % simplified.reading_tips.length] : currentStep.tip}
           </p>
           {simplified?.notice && showSimplified ? (
@@ -196,7 +193,7 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
             type="button"
             onClick={() => goToStep(stepIndex - 1)}
             disabled={stepIndex === 0}
-            className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white px-5 py-3 text-lg font-semibold text-[color:var(--ink-strong)] transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--card)] px-5 py-3 text-lg font-semibold text-[color:var(--ink-strong)] transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ChevronLeft className="h-5 w-5" />
             Back
@@ -213,7 +210,13 @@ export function LessonPlayer({ lessons }: { lessons: TechLesson[] }) {
         </div>
 
         {error ? (
-          <p className="mt-4 rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-base text-rose-900">{error}</p>
+          <p
+            className="mt-4 rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-base text-rose-900"
+            role="alert"
+            aria-live="assertive"
+          >
+            {error}
+          </p>
         ) : null}
       </section>
     </div>

@@ -4,6 +4,8 @@
   --surface: #f5f4ee;
   --surface-deep: #ebe9df;
   --panel-soft: #eef4f0;
+  --card: #ffffff;
+  --footer-surface: rgba(255, 255, 255, 0.85);
   --accent-soft: #d7ebe3;
   --accent: #2e6f62;
   --accent-deep: #234f48;
@@ -19,6 +21,8 @@ html[data-theme="soft-dark"] {
   --surface: #122027;
   --surface-deep: #1c2d34;
   --panel-soft: #1f3138;
+  --card: #1a2a31;
+  --footer-surface: rgba(26, 42, 49, 0.92);
   --accent-soft: #233e39;
   --accent: #7cc6b4;
   --accent-deep: #65b09e;
@@ -67,4 +71,12 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+html[data-theme="soft-dark"] .bg-white {
+  background-color: var(--card) !important;
+}
+
+html[data-theme="soft-dark"] .bg-white\/85 {
+  background-color: var(--footer-surface) !important;
 }

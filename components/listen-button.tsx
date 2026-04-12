@@ -50,7 +50,7 @@ export function ListenButton({ text, label = "Listen to this" }: ListenButtonPro
       type="button"
       onClick={handleClick}
       disabled={!supported}
-      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white px-4 py-2 text-base font-medium text-[color:var(--ink-strong)] shadow-sm transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--card)] px-4 py-2 text-base font-medium text-[color:var(--ink-strong)] shadow-sm transition hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-soft)] focus:outline-none focus:ring-4 focus:ring-[color:var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
       aria-pressed={speaking}
     >
       {speaking ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}

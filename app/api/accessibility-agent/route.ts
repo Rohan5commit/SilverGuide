@@ -1,37 +1,28 @@
-import type { LessonStep } from "@/lib/data";
+import { accessibilityRequestSchema, accessibilityResponseSchema, normalizeAccessibilityResponse, SILVERGUIDE_BASE_RULES } from "@/lib/ai-contracts";
 import { getFallbackAccessibilityVersion } from "@/lib/fallbacks";
+import { combineNotice, parseAiRequestBody } from "@/lib/ai-guardrails";
 import { chatWithRetryForJson, safeParseJson } from "@/lib/nim";
 
-const BASE_RULES = `
-You are SilverGuide, an AI helper for older adults learning technology.
-Use plain, respectful language.
-Avoid jargon.
-Never talk down to the user.
-Prefer short sentences.
-Be calm and confidence-building.
-Never fabricate facts.
-If uncertain, say so clearly.
-`;
-
-type AccessibilityResponse = {
-  title: string;
-  summary: string;
-  simplified_steps: string[];
-  reading_tips: string[];
-  source?: "nim" | "fallback";
-};
-
 export async function POST(request: Request) {
-  const { title, steps, largeText } = (await request.json()) as {
-    title?: string;
-    steps?: LessonStep[];
-    largeText?: boolean;
-  };
+  const bodyResult = await parseAiRequestBody(request, {
+    routeKey: "accessibility-agent",
+    maxBytes: 10_000,
+  });
 
-  if (!title?.trim() || !steps?.length) {
-    return Response.json({ error: "Lesson content is required." }, { status: 400 });
+  if (!bodyResult.ok) {
+    return bodyResult.response;
   }
 
+  const requestResult = accessibilityRequestSchema.safeParse(bodyResult.data);
+
+  if (!requestResult.success) {
+    return Response.json(
+      { error: requestResult.error.issues[0]?.message || "Lesson content is required." },
+      { status: 400 }
+    );
+  }
+
+  const { title, steps, largeText } = requestResult.data;
   const fallback = getFallbackAccessibilityVersion(title, steps, Boolean(largeText));
 
   const lessonText = steps.map((step, index) => `${index + 1}. ${step.title}: ${step.body}`).join("\n");
@@ -40,7 +31,7 @@ export async function POST(request: Request) {
     [
       {
         role: "system",
-        content: `${BASE_RULES}
+        content: `${SILVERGUIDE_BASE_RULES}
 Rewrite lessons at a simpler reading level for seniors.
 Return JSON with this exact shape:
 {
@@ -49,7 +40,7 @@ Return JSON with this exact shape:
   "simplified_steps": string[],
   "reading_tips": string[]
 }
-Use 3 to 5 short simplified steps.
+Use the exact same number of simplified_steps as the lesson you receive.
 If largeText is true, use even shorter sentences.`,
       },
       {
@@ -68,29 +59,33 @@ ${lessonText}`,
     return Response.json({
       ...fallback,
       source: "fallback",
-      notice: "NVIDIA NIM is unavailable right now, so a built-in simplified version was used.",
+      notice: attempt.reason === "timeout"
+        ? "NVIDIA NIM took too long to respond, so a built-in simplified version was used."
+        : "NVIDIA NIM is unavailable right now, so a built-in simplified version was used.",
     });
   }
 
-  let parsed = safeParseJson<AccessibilityResponse>(attempt.content);
+  let parsedJson = safeParseJson<unknown>(attempt.content);
+  let parsed = parsedJson ? accessibilityResponseSchema.safeParse(parsedJson) : null;
 
-  if (!parsed) {
+  if (!parsed?.success) {
     const retryResult = await attempt.retry();
     if (retryResult.ok) {
-      parsed = safeParseJson<AccessibilityResponse>(retryResult.content);
+      parsedJson = safeParseJson<unknown>(retryResult.content);
+      parsed = parsedJson ? accessibilityResponseSchema.safeParse(parsedJson) : null;
     }
   }
 
-  if (!parsed) {
+  if (!parsed?.success) {
     return Response.json({
       ...fallback,
       source: "fallback",
-      notice: "The AI response could not be read, so a built-in simplified version was used.",
+      notice: combineNotice("The AI response could not be validated, so a built-in simplified version was used."),
     });
   }
 
   return Response.json({
-    ...parsed,
+    ...normalizeAccessibilityResponse(parsed.data, steps),
     source: "nim",
   });
 }

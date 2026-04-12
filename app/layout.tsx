@@ -38,7 +38,7 @@ export default function RootLayout({
             <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(220,235,229,0.85),transparent_40%),radial-gradient(circle_at_top_right,rgba(246,232,219,0.75),transparent_32%),linear-gradient(180deg,rgba(252,250,244,1),rgba(246,248,246,1))]" />
             <SiteHeader />
             {children}
-            <footer className="mt-12 border-t border-[color:var(--border-soft)] bg-white/85">
+            <footer className="mt-12 border-t border-[color:var(--border-soft)] bg-[color:var(--footer-surface)]">
               <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-6 text-base text-[color:var(--ink-soft)] sm:px-6 lg:px-8">
                 <p>SilverGuide is designed for senior centers, volunteers, family helpers, and older adults building digital confidence.</p>
                 <p>NVIDIA NIM powers optional AI help. Built-in lesson content keeps the app useful even when AI is unavailable.</p>

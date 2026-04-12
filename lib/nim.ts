@@ -1,5 +1,6 @@
 const DEFAULT_MODEL = process.env.NVIDIA_NIM_MODEL || "meta/llama-3.1-8b-instruct";
 const NIM_CHAT_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
+const NIM_TIMEOUT_MS = 12_000;
 
 export type NimMessage = {
   role: "system" | "user" | "assistant";
@@ -29,6 +30,9 @@ export async function chatWithNim({
     return { ok: false, reason: "missing_api_key" };
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), NIM_TIMEOUT_MS);
+
   try {
     const response = await fetch(NIM_CHAT_URL, {
       method: "POST",
@@ -43,6 +47,7 @@ export async function chatWithNim({
         max_tokens: maxTokens,
       }),
       cache: "no-store",
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -60,8 +65,14 @@ export async function chatWithNim({
     }
 
     return { ok: true, content, model };
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return { ok: false, reason: "timeout" };
+    }
+
     return { ok: false, reason: "network_error" };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

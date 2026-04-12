@@ -1,40 +1,36 @@
+import { scamRequestSchema, scamResponseSchema, SILVERGUIDE_BASE_RULES } from "@/lib/ai-contracts";
+import { combineNotice, parseAiRequestBody, redactSensitiveInfo } from "@/lib/ai-guardrails";
 import { getFallbackScamAnalysis } from "@/lib/fallbacks";
 import { chatWithRetryForJson, safeParseJson } from "@/lib/nim";
 
-const BASE_RULES = `
-You are SilverGuide, an AI helper for older adults learning technology safety.
-Use plain, respectful language.
-Avoid jargon.
-Never talk down to the user.
-Prefer short sentences.
-Be calm and confidence-building.
-Never fabricate facts.
-If uncertain, say so clearly.
-For scam advice, be conservative.
-`;
-
-type ScamResponse = {
-  verdict: "safe" | "suspicious" | "very_suspicious";
-  red_flags: string[];
-  simple_explanation: string;
-  recommended_action: string;
-  source?: "nim" | "fallback";
-};
-
 export async function POST(request: Request) {
-  const { message } = (await request.json()) as { message?: string };
+  const bodyResult = await parseAiRequestBody(request, {
+    routeKey: "scam-agent",
+  });
 
-  if (!message?.trim()) {
-    return Response.json({ error: "Please paste a message first." }, { status: 400 });
+  if (!bodyResult.ok) {
+    return bodyResult.response;
   }
 
+  const requestResult = scamRequestSchema.safeParse(bodyResult.data);
+
+  if (!requestResult.success) {
+    return Response.json(
+      { error: requestResult.error.issues[0]?.message || "Please paste a message first." },
+      { status: 400 }
+    );
+  }
+
+  const { message } = requestResult.data;
+  const { sanitized, redactionCount } = redactSensitiveInfo(message);
   const fallback = getFallbackScamAnalysis(message);
 
   const attempt = await chatWithRetryForJson(
     [
       {
         role: "system",
-        content: `${BASE_RULES}
+        content: `${SILVERGUIDE_BASE_RULES}
+For scam advice, be conservative.
 Analyze whether a message may be a scam.
 Return JSON with this exact shape:
 {
@@ -47,7 +43,7 @@ Use 2 or 3 short red flags. Be conservative.`,
       },
       {
         role: "user",
-        content: `Review this message for scam risk:\n${message}`,
+        content: `Review this message for scam risk:\n${sanitized}`,
       },
     ],
     "Return only valid JSON with verdict, red_flags, simple_explanation, and recommended_action.",
@@ -58,29 +54,40 @@ Use 2 or 3 short red flags. Be conservative.`,
     return Response.json({
       ...fallback,
       source: "fallback",
-      notice: "NVIDIA NIM is unavailable right now, so a built-in safety check was used.",
+      notice: combineNotice(
+        redactionCount > 0 ? "Private details were redacted before AI processing." : undefined,
+        attempt.reason === "timeout"
+          ? "NVIDIA NIM took too long to respond, so a built-in safety check was used."
+          : "NVIDIA NIM is unavailable right now, so a built-in safety check was used."
+      ),
     });
   }
 
-  let parsed = safeParseJson<ScamResponse>(attempt.content);
+  let parsedJson = safeParseJson<unknown>(attempt.content);
+  let parsed = parsedJson ? scamResponseSchema.safeParse(parsedJson) : null;
 
-  if (!parsed) {
+  if (!parsed?.success) {
     const retryResult = await attempt.retry();
     if (retryResult.ok) {
-      parsed = safeParseJson<ScamResponse>(retryResult.content);
+      parsedJson = safeParseJson<unknown>(retryResult.content);
+      parsed = parsedJson ? scamResponseSchema.safeParse(parsedJson) : null;
     }
   }
 
-  if (!parsed) {
+  if (!parsed?.success) {
     return Response.json({
       ...fallback,
       source: "fallback",
-      notice: "The AI response could not be read, so a built-in safety check was used.",
+      notice: combineNotice(
+        redactionCount > 0 ? "Private details were redacted before AI processing." : undefined,
+        "The AI response could not be validated, so a built-in safety check was used."
+      ),
     });
   }
 
   return Response.json({
-    ...parsed,
+    ...parsed.data,
     source: "nim",
+    notice: redactionCount > 0 ? "Private details were redacted before AI processing." : undefined,
   });
 }
