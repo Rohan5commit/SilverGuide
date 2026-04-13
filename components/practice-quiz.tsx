@@ -18,7 +18,7 @@ type SessionSummary = {
   encouragement: string;
 };
 
-const storageKey = "silverguide-session-summary";
+export const SESSION_SUMMARY_STORAGE_KEY = "silverguide-session-summary";
 
 export function PracticeQuiz() {
   const router = useRouter();
@@ -85,7 +85,7 @@ export function PracticeQuiz() {
               : "You practiced the most important skill today: slowing down before you respond.",
       };
 
-      window.localStorage.setItem(storageKey, JSON.stringify(summary));
+      window.localStorage.setItem(SESSION_SUMMARY_STORAGE_KEY, JSON.stringify(summary));
       router.push("/summary");
       return;
     }
@@ -229,7 +229,7 @@ export function readStoredSessionSummary() {
     return null;
   }
 
-  const raw = window.localStorage.getItem(storageKey);
+  const raw = window.localStorage.getItem(SESSION_SUMMARY_STORAGE_KEY);
 
   if (!raw) {
     return null;

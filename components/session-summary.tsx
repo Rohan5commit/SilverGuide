@@ -3,14 +3,23 @@
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { CalendarClock, RotateCcw } from "lucide-react";
-import { readStoredSessionSummary } from "@/components/practice-quiz";
+import { readStoredSessionSummary, SESSION_SUMMARY_STORAGE_KEY } from "@/components/practice-quiz";
+
+function readStoredSessionSummarySnapshot() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.localStorage.getItem(SESSION_SUMMARY_STORAGE_KEY) ?? "";
+}
 
 export function SessionSummary() {
-  const summary = useSyncExternalStore(
+  const summarySnapshot = useSyncExternalStore(
     () => () => undefined,
-    () => readStoredSessionSummary(),
-    () => null
+    readStoredSessionSummarySnapshot,
+    () => ""
   );
+  const summary = summarySnapshot ? readStoredSessionSummary() : null;
 
   if (!summary) {
     return (

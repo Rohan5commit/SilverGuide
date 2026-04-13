@@ -12,23 +12,26 @@ type PreferencesContextValue = {
 };
 
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
-const defaultPreferences: { largeText: boolean; theme: ThemeMode } = {
-  largeText: false,
-  theme: "light",
-};
+const defaultSnapshot = "false|light";
 const preferencesEvent = "silverguide-preferences-change";
 
-function readPreferences(): { largeText: boolean; theme: ThemeMode } {
+function readPreferencesSnapshot() {
   if (typeof window === "undefined") {
-    return defaultPreferences;
+    return defaultSnapshot;
   }
 
   const savedLargeText = window.localStorage.getItem("silverguide-large-text");
   const savedTheme = window.localStorage.getItem("silverguide-theme");
 
+  return `${savedLargeText === "true"}|${savedTheme === "soft-dark" ? "soft-dark" : "light"}`;
+}
+
+function parsePreferencesSnapshot(snapshot: string): { largeText: boolean; theme: ThemeMode } {
+  const [largeTextRaw, themeRaw] = snapshot.split("|");
+
   return {
-    largeText: savedLargeText === "true",
-    theme: savedTheme === "soft-dark" ? "soft-dark" : "light",
+    largeText: largeTextRaw === "true",
+    theme: themeRaw === "soft-dark" ? "soft-dark" : "light",
   };
 }
 
@@ -59,7 +62,8 @@ function writePreferences(next: { largeText: boolean; theme: ThemeMode }) {
 }
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
-  const preferences = useSyncExternalStore(subscribe, readPreferences, () => defaultPreferences);
+  const snapshot = useSyncExternalStore(subscribe, readPreferencesSnapshot, () => defaultSnapshot);
+  const preferences = parsePreferencesSnapshot(snapshot);
 
   useEffect(() => {
     applyPreferences(preferences);
